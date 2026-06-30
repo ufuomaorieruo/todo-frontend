@@ -27,9 +27,9 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
-      - name: Build Next.js app
+      - name: Build CRA app
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
         run: npm run build
 
       # Build succeeded — now deploy to the VM
@@ -39,7 +39,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: NEXT_PUBLIC_API_URL
+          envs: REACT_APP_API_URL
           script: |
             set -e
 
@@ -47,14 +47,14 @@ jobs:
             cd "$APP_DIR"
 
             echo "==> Pulling latest code..."
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin master
+            git reset --hard origin/master
 
             echo "==> Installing dependencies..."
             npm ci
 
-            echo "==> Building Next.js app on VM..."
-            NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" npm run build
+            echo "==> Building CRA app on VM..."
+            REACT_APP_API_URL="${{ secrets.REACT_APP_API_URL }}" npm run build
 
             echo "==> Restarting app via PM2..."
             pm2 reload frontend --update-env || pm2 start ecosystem.config.js

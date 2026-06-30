@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Frontend VM Provisioning Script — Next.js + PM2 + Nginx
+# Frontend VM Provisioning Script — Create React App + PM2 (serve) + Nginx
 # Run once as root (or with sudo) on a fresh GCP Ubuntu VM
 # Usage: sudo bash provision-frontend.sh
 #
@@ -55,8 +55,8 @@ curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
 apt-get install -y nodejs
 node -v && npm -v
 
-echo "==> [3/7] Install PM2 globally"
-npm install -g pm2
+echo "==> [3/7] Install PM2 and serve globally"
+npm install -g pm2 serve
 
 echo "==> [4/7] Ensure app user exists (it already does — this is your VM login user)"
 if ! id "$APP_USER" &>/dev/null; then
@@ -74,8 +74,10 @@ sudo -u "$APP_USER" git clone --branch "$REPO_BRANCH" "$REPO_URL" "$APP_DIR"
 cd "$APP_DIR"
 
 # Write .env.production with backend URL
+# CRA requires the REACT_APP_ prefix (not NEXT_PUBLIC_) for vars to be
+# baked into the client bundle at build time
 cat > "$APP_DIR/.env.production" <<EOF
-NEXT_PUBLIC_API_URL=$BACKEND_API_URL
+REACT_APP_API_URL=$BACKEND_API_URL
 EOF
 chown "$APP_USER":"$APP_USER" "$APP_DIR/.env.production"
 
@@ -83,19 +85,20 @@ sudo -u "$APP_USER" npm ci
 sudo -u "$APP_USER" npm run build
 
 echo "==> [6/7] Configure PM2 and start app"
+# CRA builds static files into ./build — serve them with the 'serve' package
+# rather than running a Node server (there's no 'next start' equivalent)
 cat > "$APP_DIR/ecosystem.config.js" <<EOF
 module.exports = {
   apps: [{
     name: 'frontend',
-    script: 'node_modules/.bin/next',
-    args: 'start',
+    script: '/usr/bin/serve',
+    args: '-s build -l $APP_PORT',
     cwd: '$APP_DIR',
     instances: 1,
     autorestart: true,
     watch: false,
     env: {
       NODE_ENV: 'production',
-      PORT: $APP_PORT,
     }
   }]
 };
@@ -114,20 +117,17 @@ server {
     listen 80;
     server_name $NGINX_SERVER_NAME;
 
-    # Serve Next.js app
+    # Reverse proxy to the 'serve' process running the CRA static build
     location / {
         proxy_pass http://127.0.0.1:$APP_PORT;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_cache_bypass \$http_upgrade;
     }
 
-    # Cache static Next.js assets aggressively
-    location /_next/static/ {
+    # Cache static CRA assets aggressively (filenames are content-hashed)
+    location /static/ {
         proxy_pass http://127.0.0.1:$APP_PORT;
         proxy_cache_valid 200 1y;
         add_header Cache-Control "public, max-age=31536000, immutable";
@@ -152,4 +152,4 @@ echo ""
 echo "📌 Next steps:"
 echo "   1. Add the GitHub Actions deploy public key to /home/$APP_USER/.ssh/authorized_keys"
 echo "      (it likely already has one from VM creation — you can add a second line)"
-echo "   2. Verify NEXT_PUBLIC_API_URL in $APP_DIR/.env.production"
+echo "   2. Verify REACT_APP_API_URL in $APP_DIR/.env.production"
