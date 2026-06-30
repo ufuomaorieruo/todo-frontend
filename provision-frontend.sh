@@ -16,11 +16,11 @@ export DEBIAN_FRONTEND=noninteractive
 # ---------- Config — edit these before running ----------
 APP_USER="xahavi"   # <-- your VM login username
 APP_DIR="/var/www/frontend"
-REPO_URL="https://github.com/YOUR_ORG/YOUR_FRONTEND_REPO.git"
-REPO_BRANCH="main"
+REPO_URL="https://github.com/VictorOjedokun/todo-frontend.git"
+REPO_BRANCH="master"
 APP_PORT=3001
-NGINX_SERVER_NAME="your-frontend-domain.com"   # or VM public IP
-BACKEND_API_URL="http://YOUR_BACKEND_VM_IP_OR_DOMAIN"
+NGINX_SERVER_NAME="34.35.16.106"   # or VM public IP
+BACKEND_API_URL="http://34.35.151.43"
 NODE_VERSION="20"
 # --------------------------------------------------------
 

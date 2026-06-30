@@ -1,0 +1,65 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to Azure VM
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build Next.js app
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: npm run build
+
+      # Build succeeded — now deploy to the VM
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: NEXT_PUBLIC_API_URL
+          script: |
+            set -e
+
+            APP_DIR="/var/www/frontend"
+            cd "$APP_DIR"
+
+            echo "==> Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Installing dependencies..."
+            npm ci
+
+            echo "==> Building Next.js app on VM..."
+            NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" npm run build
+
+            echo "==> Restarting app via PM2..."
+            pm2 reload frontend --update-env || pm2 start ecosystem.config.js
+
+            echo "==> Checking app status..."
+            pm2 show frontend
+
+            echo "✅ Frontend deployment complete"
