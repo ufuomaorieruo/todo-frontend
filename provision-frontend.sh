@@ -14,13 +14,13 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 # ---------- Config — edit these before running ----------
-APP_USER="xahavi"   # <-- your VM login username
+APP_USER="azureuser"   # <-- your VM login username
 APP_DIR="/var/www/frontend"
-REPO_URL="https://github.com/VictorOjedokun/todo-frontend.git"
+REPO_URL="https://github.com/ufuomaorieruo/todo-frontend.git"
 REPO_BRANCH="master"
 APP_PORT=3001
-NGINX_SERVER_NAME="34.35.16.106"   # or VM public IP
-BACKEND_API_URL="http://34.35.151.43"
+NGINX_SERVER_NAME="40.123.244.117"   # or VM public IP
+BACKEND_API_URL="http://20.108.17.40"
 NODE_VERSION="20"
 # --------------------------------------------------------
 
